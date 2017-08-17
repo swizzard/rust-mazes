@@ -2,9 +2,18 @@ use std::collections::HashMap;
 use std::cmp::Ordering::*;
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
-struct Point {
+pub struct Point {
     column: u32,
     row: u32,
+}
+
+impl Point {
+    pub fn new(column: u32, row: u32) -> Point {
+        Point {
+            column,
+            row,
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
@@ -16,26 +25,27 @@ enum Direction {
 }
 
 #[derive(Debug, Eq, PartialEq)]
-struct Cell<'a> {
+pub struct Cell {
     loc: Point,
-    neighbors: &'a mut HashMap<Direction, Point>,
+    neighbors: HashMap<Direction, Point>,
 }
 
-impl<'a> Cell<'a> {
-    fn new(loc: Point) -> Cell<'a> {
+impl Cell {
+    pub fn new(loc: Point) -> Cell {
         Cell {
             loc,
-            neighbors: &mut HashMap::new(),
+            neighbors: HashMap::new(),
         }
     }
 }
 
-struct Maze<'a> {
-    cells: &'a mut HashMap<Point, Cell<'a>>,
+#[derive(Debug)]
+pub struct Maze {
+    cells: HashMap<Point, Cell>,
 }
 
-impl<'a> Maze<'a> {
-    fn new(x: u32, y: u32) -> Maze<'a> {
+impl Maze {
+    pub fn new(x: u32, y: u32) -> Maze {
         let mut cells = HashMap::new();
         for column in 0..x {
             for row in 0..y {
@@ -48,7 +58,7 @@ impl<'a> Maze<'a> {
             }
         }
         Maze {
-            cells: &mut cells,
+            cells,
         }
     }
 
@@ -64,13 +74,11 @@ impl<'a> Maze<'a> {
         }
     }
 
-    fn add_neighbor(&mut self, p1: Point, p2: Point) {
+    pub fn add_neighbor(&mut self, p1: Point, p2: Point) {
         let d1 = Maze::calc_dir(p1, p2);
         let d2 = Maze::calc_dir(p2, p1);
-        let ref mut c1 = self.cells.get_mut(&p1).unwrap();
-        let ref mut c2 = self.cells.get_mut(&p2).unwrap();
-        c1.neighbors.insert(d1, p2);
-        c2.neighbors.insert(d2, p1);
+        self.cells.get_mut(&p1).map(|c| c.neighbors.insert(d1, p2));
+        self.cells.get_mut(&p2).map(|c| c.neighbors.insert(d2, p1));
     }
 }
 
@@ -102,10 +110,10 @@ mod test {
             column: 0,
             row: 1,
         };
-        assert_eq(North, Maze::calc_dir(&center, &n));
-        assert_eq(South, Maze::calc_dir(&center, &s));
-        assert_eq(East, Maze::calc_dir(&center, &e));
-        assert_eq(West, Maze::calc_dir(&center, &w));
+        assert_eq!(North, Maze::calc_dir(center, n));
+        assert_eq!(South, Maze::calc_dir(center, s));
+        assert_eq!(East, Maze::calc_dir(center, e));
+        assert_eq!(West, Maze::calc_dir(center, w));
     }
 
     #[test]
@@ -119,25 +127,19 @@ mod test {
             column: 1,
             row: 1,
         };
-        let _ = Maze::calc_dir(&center, &center);
-        let _ = Maze::calc_dir(&center, &bad);
+        let _ = Maze::calc_dir(center, center);
+        let _ = Maze::calc_dir(center, bad);
     }
 
     #[test]
     fn add_neighbor() {
         let mut maze = Maze::new(2, 2);
-        let p1 = Point {
-            row: 0,
-            column: 0,
-        };
-        let p2 = Point {
-            row: 1,
-            column: 0,
-        };
+        let p1 = Point::new(0, 0); 
+        let p2 = Point::new(1, 0);
         maze.add_neighbor(p1, p2);
         let c1 = maze.cells.get(&p1).unwrap();
-        let c2 = maze.cells.get(P2).unwrap();
-        assert_eq(p2, c1.neighbors.get(North).unwrap());
-        assert_eq(p1, c2.neighbors.get(South).unwrap());
+        let c2 = maze.cells.get(&p2).unwrap();
+        assert_eq!(&p2, c1.neighbors.get(&East).expect("p2 not found"));
+        assert_eq!(&p1, c2.neighbors.get(&West).expect("p1 not found"));
     }
 }
