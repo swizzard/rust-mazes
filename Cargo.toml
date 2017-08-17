@@ -1,0 +1,6 @@
+[package]
+name = "mazes"
+version = "0.1.0"
+authors = ["Sam Raker <sam.raker@gmail.com>"]
+
+[dependencies]
