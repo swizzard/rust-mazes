@@ -41,13 +41,13 @@ impl Cell {
     }
 }
 
-struct EachRow {
-    maze: &Maze,
+pub struct EachRow<'a> {
+    maze: &'a Maze,
     ctr: u32,
 }
 
-impl EachRow {
-    fn new(maze: &Maze) -> EachRow {
+impl<'a> EachRow<'a> {
+    fn new(maze: &'a Maze) -> EachRow {
         EachRow {
             ctr: 0,
             maze,
@@ -58,17 +58,17 @@ impl EachRow {
     }
 }
 
-impl Iterator for EachRow {
-    type Item = Vec<&Cell>;
+impl<'a> Iterator for EachRow<'a> {
+    type Item = Vec<&'a Cell>;
 
-    fn next(&self) -> Option<Vec<&Cell>> {
-        if self.ctr > self.maze.row_count {
+    fn next(&mut self) -> Option<Vec<&'a Cell>> {
+        if self.ctr >= self.maze.row_count {
             None
         } else {
-            let &mut v = Vector::new();
+            let mut v = Vec::new();
             for col_idx in 0..self.maze.col_count {
                 let p = Point::new(self.ctr, col_idx);
-                v.push(self.maze.cells[&p]);
+                v.push(&self.maze.cells[&p]);
             }
             self.inc_ctr();
             Some(v)
@@ -76,8 +76,13 @@ impl Iterator for EachRow {
     }
 }
 
-impl EachCol {
-    fn new(maze: &Maze) -> EachCol {
+pub struct EachCol<'a> {
+    maze: &'a Maze,
+    ctr: u32,
+}
+
+impl<'a> EachCol<'a> {
+    fn new(maze: &'a Maze) -> EachCol {
         EachCol {
             ctr: 0,
             maze,
@@ -88,16 +93,17 @@ impl EachCol {
     }
 }
 
-impl Iterator for EachCol {
-    type Item = Vec<&Cell>;
-    fn next(&self) -> Option<Vec<&Cell>> {
-        if self.ctr > self.maze.col_count {
+impl<'a> Iterator for EachCol<'a> {
+    type Item = Vec<&'a Cell>;
+
+    fn next(&mut self) -> Option<Vec<&'a Cell>> {
+        if self.ctr >= self.maze.col_count {
             None
         } else {
-            let &mut v = Vector::new();
+            let mut v = Vec::new();
             for row_idx in 0..self.maze.row_count {
-                let p = Point::new(self.ctr, row_idx);
-                v.push(self.maze.cells[&p]);
+                let p = Point::new(row_idx, self.ctr);
+                v.push(&self.maze.cells[&p]);
             }
             self.inc_ctr();
             Some(v)
@@ -105,14 +111,14 @@ impl Iterator for EachCol {
     }
 }
 
-struct EachCell {
-    maze: &maze,
+pub struct EachCell<'a> {
+    maze: &'a Maze,
     col_ctr: u32,
     row_ctr: u32,
 }
 
-impl EachCell {
-    fn new(&maze) -> EachCell {
+impl<'a> EachCell<'a> {
+    fn new(maze: &'a Maze) -> EachCell {
         EachCell {
             col_ctr: 0,
             row_ctr: 0,
@@ -121,7 +127,7 @@ impl EachCell {
     }
     fn inc_ctrs(&mut self) {
         let new_col = self.col_ctr + 1;
-        if new_col > self.maze.col_count {
+        if new_col >= self.maze.col_count {
             self.col_ctr = 0;
             self.row_ctr = self.row_ctr + 1;
         } else {
@@ -130,17 +136,17 @@ impl EachCell {
     }
 }
 
-impl Iterator for EachCell {
-    type Item = Cell;
+impl<'a> Iterator for EachCell<'a> {
+    type Item = &'a Cell;
 
-    fn next(&self) -> Option<Cell> {
-        if self.col_ctr == 0 && self.row_ctr > self.maze.row_count {
+    fn next(&mut self) -> Option<&'a Cell> {
+        if self.col_ctr == 0 && self.row_ctr >= self.maze.row_count {
             None
         } else {
             let p = Point::new(self.row_ctr, self.col_ctr);
-            let c = self.maze.cells[&p];
+            let ref c = self.maze.cells[&p];
             self.inc_ctrs();
-            Some(v)
+            Some(c)
         }
     }
 }
@@ -161,7 +167,7 @@ impl Maze {
                     column,
                     row
                 };
-                let mut c = Cell::new(p);
+                let c = Cell::new(p);
                 cells.insert(p, c);
             }
         }
@@ -192,15 +198,15 @@ impl Maze {
     }
 
     pub fn each_row_iter(&self) -> EachRow {
-        EachRow::new(self.maze)
+        EachRow::new(self)
     }
 
     pub fn each_col_iter(&self) -> EachCol {
-        EachCol::new(self.maze)
+        EachCol::new(self)
     }
-    
+
     pub fn each_cell_iter(&self) -> EachCell {
-        EachCell::new(self.maze)
+        EachCell::new(self)
     }
 }
 
@@ -263,5 +269,51 @@ mod test {
         let c2 = maze.cells.get(&p2).unwrap();
         assert_eq!(&p2, c1.neighbors.get(&East).expect("p2 not found"));
         assert_eq!(&p1, c2.neighbors.get(&West).expect("p1 not found"));
+    }
+
+    #[test]
+    fn each_row_iter() {
+        let maze = Maze::new(2, 2);
+        let mut eri = maze.each_row_iter();
+        let r0 = eri.next().expect("row 0 missing");
+        let ref r0c0 = maze.cells[&Point::new(0, 0)];
+        let ref r0c1 = maze.cells[&Point::new(0, 1)];
+        assert_eq!(vec![r0c0, r0c1], r0);
+        let r1 = eri.next().expect("row 1 missing");
+        let ref r1c0 = maze.cells[&Point::new(1, 0)];
+        let ref r1c1 = maze.cells[&Point::new(1, 1)];
+        assert_eq!(vec![r1c0, r1c1], r1);
+        if let Some(_) = eri.next() {
+            panic!("extra row");
+        }
+    }
+
+    #[test]
+    fn each_col_iter() {
+        let maze = Maze::new(2, 2);
+        let mut eci = maze.each_col_iter();
+        let c0 = eci.next().expect("col 0 missing");
+        let ref r0c0 = maze.cells[&Point::new(0, 0)];
+        let ref r1c0 = maze.cells[&Point::new(1, 0)];
+        assert_eq!(vec![r0c0, r1c0], c0);
+        let c1 = eci.next().expect("col 1 missing");
+        let ref r0c1 = maze.cells[&Point::new(0, 1)];
+        let ref r1c1 = maze.cells[&Point::new(1, 1)];
+        assert_eq!(vec![r0c1, r1c1], c1);
+        if let Some(_) = eci.next() {
+            panic!("extra row");
+        }
+    }
+
+    #[test]
+    fn each_cell_iter() { 
+        let maze = Maze::new(2, 2);
+        let ref r0c0 = maze.cells[&Point::new(0, 0)];
+        let ref r0c1 = maze.cells[&Point::new(0, 1)];
+        let ref r1c0 = maze.cells[&Point::new(1, 0)];
+        let ref r1c1 = maze.cells[&Point::new(1, 1)];
+        let expected_cells = vec![r0c0, r0c1, r1c0, r1c1];
+        let actual_cells: Vec<&Cell> = maze.each_cell_iter().collect();
+        assert_eq!(expected_cells, actual_cells);
     }
 }
