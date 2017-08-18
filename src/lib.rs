@@ -1,5 +1,7 @@
+extern crate rand;
 use std::collections::HashMap;
 use std::cmp::Ordering::*;
+use rand::distributions::{IndependentSample, Range};
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub struct Point {
@@ -39,16 +41,122 @@ impl Cell {
     }
 }
 
+struct EachRow {
+    maze: &Maze,
+    ctr: u32,
+}
+
+impl EachRow {
+    fn new(maze: &Maze) -> EachRow {
+        EachRow {
+            ctr: 0,
+            maze,
+        }
+    }
+    fn inc_ctr(&mut self) {
+        self.ctr += 1;
+    }
+}
+
+impl Iterator for EachRow {
+    type Item = Vec<&Cell>;
+
+    fn next(&self) -> Option<Vec<&Cell>> {
+        if self.ctr > self.maze.row_count {
+            None
+        } else {
+            let &mut v = Vector::new();
+            for col_idx in 0..self.maze.col_count {
+                let p = Point::new(self.ctr, col_idx);
+                v.push(self.maze.cells[&p]);
+            }
+            self.inc_ctr();
+            Some(v)
+        }
+    }
+}
+
+impl EachCol {
+    fn new(maze: &Maze) -> EachCol {
+        EachCol {
+            ctr: 0,
+            maze,
+        }
+    }
+    fn inc_ctr(&mut self) {
+        self.ctr += 1;
+    }
+}
+
+impl Iterator for EachCol {
+    type Item = Vec<&Cell>;
+    fn next(&self) -> Option<Vec<&Cell>> {
+        if self.ctr > self.maze.col_count {
+            None
+        } else {
+            let &mut v = Vector::new();
+            for row_idx in 0..self.maze.row_count {
+                let p = Point::new(self.ctr, row_idx);
+                v.push(self.maze.cells[&p]);
+            }
+            self.inc_ctr();
+            Some(v)
+        }
+    }
+}
+
+struct EachCell {
+    maze: &maze,
+    col_ctr: u32,
+    row_ctr: u32,
+}
+
+impl EachCell {
+    fn new(&maze) -> EachCell {
+        EachCell {
+            col_ctr: 0,
+            row_ctr: 0,
+            maze
+        }
+    }
+    fn inc_ctrs(&mut self) {
+        let new_col = self.col_ctr + 1;
+        if new_col > self.maze.col_count {
+            self.col_ctr = 0;
+            self.row_ctr = self.row_ctr + 1;
+        } else {
+            self.col_ctr = new_col;
+        }
+    }
+}
+
+impl Iterator for EachCell {
+    type Item = Cell;
+
+    fn next(&self) -> Option<Cell> {
+        if self.col_ctr == 0 && self.row_ctr > self.maze.row_count {
+            None
+        } else {
+            let p = Point::new(self.row_ctr, self.col_ctr);
+            let c = self.maze.cells[&p];
+            self.inc_ctrs();
+            Some(v)
+        }
+    }
+}
+
 #[derive(Debug)]
 pub struct Maze {
+    row_count: u32,
+    col_count: u32,
     cells: HashMap<Point, Cell>,
 }
 
 impl Maze {
-    pub fn new(x: u32, y: u32) -> Maze {
+    pub fn new(col_count: u32, row_count: u32) -> Maze {
         let mut cells = HashMap::new();
-        for column in 0..x {
-            for row in 0..y {
+        for column in 0..col_count {
+            for row in 0..row_count {
                 let p = Point {
                     column,
                     row
@@ -59,6 +167,8 @@ impl Maze {
         }
         Maze {
             cells,
+            row_count,
+            col_count,
         }
     }
 
@@ -79,6 +189,18 @@ impl Maze {
         let d2 = Maze::calc_dir(p2, p1);
         self.cells.get_mut(&p1).map(|c| c.neighbors.insert(d1, p2));
         self.cells.get_mut(&p2).map(|c| c.neighbors.insert(d2, p1));
+    }
+
+    pub fn each_row_iter(&self) -> EachRow {
+        EachRow::new(self.maze)
+    }
+
+    pub fn each_col_iter(&self) -> EachCol {
+        EachCol::new(self.maze)
+    }
+    
+    pub fn each_cell_iter(&self) -> EachCell {
+        EachCell::new(self.maze)
     }
 }
 
