@@ -1,5 +1,6 @@
 extern crate mazes;
-use mazes::*;
+use mazes::maze::*;
+use mazes::cell::Point;
 
 fn main() {
     let mut maze = Maze::new(2, 2);
