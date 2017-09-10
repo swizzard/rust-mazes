@@ -1,6 +1,9 @@
 use std::collections::HashMap;
+use std::ops::{Index, IndexMut};
+
 use rand::distributions::{IndependentSample, Range};
 use rand::{thread_rng, ThreadRng};
+
 use cell::{Direction, Point, Cell};
 
 pub struct EachRow<'a> {
@@ -180,6 +183,10 @@ impl Maze {
         }
     }
 
+    pub fn get_neighbor(&self, p1: Point, dir: Direction) -> &Cell {
+        &self.cells[&p1.get_neighbor(dir)]
+    }
+
     pub fn add_neighbor(&mut self, p1: Point, p2: Point) {
         let d1 = Point::calc_dir(p1, p2);
         let d2 = Point::calc_dir(p2, p1);
@@ -204,14 +211,33 @@ impl Maze {
     }
 }
 
+impl Index<Point> for Maze {
+    type Output = Cell;
+
+    fn index<'a>(&'a self, p: Point) -> &'a Cell {
+        &self.cells[&p]
+    }
+}
+
+impl IndexMut<Point> for Maze {
+    fn index_mut<'a>(&'a mut self, p: Point) -> &'a mut Cell {
+        self.cells.get_mut(&p).unwrap()
+    }
+}
+
+
 #[cfg(test)]
 mod test {
     use super::*;
     use cell::Direction::*;
 
+    fn new_maze() -> Maze {
+        Maze::new(2,2)
+    }
+
     #[test]
     fn add_neighbor() {
-        let mut maze = Maze::new(2, 2);
+        let mut maze = new_maze();
         let p1 = Point::new(0, 0); 
         let p2 = Point::new(1, 0);
         maze.add_neighbor(p1, p2);
@@ -223,7 +249,7 @@ mod test {
 
     #[test]
     fn each_row_iter() {
-        let maze = Maze::new(2, 2);
+        let maze = new_maze();
         let mut eri = maze.each_row_iter();
         let r0 = eri.next().expect("row 0 missing");
         let ref r0c0 = maze.cells[&Point::new(0, 0)];
@@ -240,7 +266,7 @@ mod test {
 
     #[test]
     fn each_col_iter() {
-        let maze = Maze::new(2, 2);
+        let maze = new_maze();
         let mut eci = maze.each_col_iter();
         let c0 = eci.next().expect("col 0 missing");
         let ref r0c0 = maze.cells[&Point::new(0, 0)];
@@ -257,7 +283,7 @@ mod test {
 
     #[test]
     fn each_cell_iter() { 
-        let maze = Maze::new(2, 2);
+        let maze = new_maze();
         let ref r0c0 = maze.cells[&Point::new(0, 0)];
         let ref r0c1 = maze.cells[&Point::new(0, 1)];
         let ref r1c0 = maze.cells[&Point::new(1, 0)];
@@ -269,7 +295,7 @@ mod test {
 
     #[test]
     fn rand_cell_iter() {
-        let maze = Maze::new(2, 2);
+        let maze = new_maze();
         let mut cnt = 0;
         for c in maze.rand_cell_iter() {
             assert!(c.loc.column < maze.col_count);

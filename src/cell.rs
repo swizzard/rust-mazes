@@ -25,6 +25,15 @@ impl Point {
             _ => panic!("Invalid cell pair")
         }
     }
+
+    pub fn get_neighbor(&self, dir: Direction) -> Point {
+        match dir {
+            Direction::East => Point::new(self.column + 1, self.row),
+            Direction::West => Point::new(self.column - 1, self.row),
+            Direction::North => Point::new(self.column, self.row + 1),
+            Direction::South => Point::new(self.column, self.row - 1),
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
